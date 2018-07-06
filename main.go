@@ -19,13 +19,13 @@ var tgBot TGBot
 
 func podAdded(obj interface{}) {
 	pod := obj.(*v1.Pod)
-	tgBot.sendMessage(
+	go tgBot.sendMessage(
 		"Pod created: *" + pod.Name + "* in namespace " + pod.Namespace)
 }
 
 func podDeleted(obj interface{}) {
 	pod := obj.(*v1.Pod)
-	tgBot.sendMessage(
+	go tgBot.sendMessage(
 		"Pod deleted: *" + pod.Name + "* in namespace " + pod.Namespace)
 }
 
@@ -49,7 +49,8 @@ func podUpdated(oldObj, newObj interface{}) {
 	// Show JSON diff
 	a, _ := jd.ReadJsonString(string(oldPodJSON))
 	b, _ := jd.ReadJsonString(string(newPodJSON))
-	tgBot.sendMessage("Pod updated: *" + oldPod.Name + "* in namespace " + oldPod.Namespace + " :\n" + a.Diff(b).Render())
+	go tgBot.sendMessage(
+		"Pod updated: *" + oldPod.Name + "* in namespace " + oldPod.Namespace + " :\n" + a.Diff(b).Render())
 }
 
 func watchPods(clientset *kubernetes.Clientset) {

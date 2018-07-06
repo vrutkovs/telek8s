@@ -23,7 +23,7 @@ newcontainer=$(buildah from scratch)
 scratchmnt=$(buildah mount $newcontainer)
 
 # install the packages
-dnf install --installroot $scratchmnt --release $release coreutils --setopt install_weak_deps=false -y
+dnf install --installroot $scratchmnt --release $release glibc ca-certificates --setopt install_weak_deps=false -y
 dnf clean all -y --installroot $scratchmnt --releasever $release
 
 cp telek8s $scratchmnt/usr/local/bin

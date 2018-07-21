@@ -1,11 +1,9 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
+	"reflect"
 	"time"
-
-	jd "github.com/josephburnett/jd/lib"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -34,23 +32,58 @@ func podUpdated(oldObj, newObj interface{}) {
 	oldPod := oldObj.(*v1.Pod)
 	newPod := newObj.(*v1.Pod)
 
-	// Convert objects to JSON
-	oldPodJSON, err := json.Marshal(oldPod)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	newPodJSON, err := json.Marshal(newPod)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	// Make a diff
+	diff := jsonDiff(oldPod, newPod)
 
 	// Show JSON diff
-	a, _ := jd.ReadJsonString(string(oldPodJSON))
-	b, _ := jd.ReadJsonString(string(newPodJSON))
 	go tgBot.sendMessage(
-		"Pod updated: *" + oldPod.Name + "* in namespace " + oldPod.Namespace + " :\n" + a.Diff(b).Render())
+		"Pod updated: *" + oldPod.Name + "* in namespace " + oldPod.Namespace + " :\n" + diff)
+}
+
+func max(x, y int) int {
+	if x > y {
+		return x
+	}
+	return y
+}
+
+func jsonDiff(oldPod *v1.Pod, newPod *v1.Pod) string {
+	var result string
+	oldPodStatus := oldPod.Status
+	newPodStatus := newPod.Status
+
+	oldReflect := reflect.ValueOf(oldPodStatus)
+	newReflect := reflect.ValueOf(newPodStatus)
+
+	oldValues := make([]string, oldReflect.NumField())
+	newValues := make([]string, newReflect.NumField())
+
+	for i := 0; i < oldReflect.NumField(); i++ {
+		oldValues[i] = oldReflect.Field(i).String()
+	}
+
+	for i := 0; i < newReflect.NumField(); i++ {
+		newValues[i] = newReflect.Field(i).String()
+	}
+
+	for i := 0; i < max(len(oldValues), len(newValues)); i++ {
+		oldValue := ""
+		newValue := ""
+		fieldName := ""
+		if i > len(oldValues)+1 {
+			oldValue = oldValues[i]
+			fieldName = oldReflect.Type().Field(i).Name
+		}
+		if i > len(newValues)+1 {
+			newValue = newValues[i]
+			fieldName = newReflect.Type().Field(i).Name
+		}
+		if oldValue != newValue {
+			result += fmt.Sprintf("*%s*:\n  -%s\n  +%s\n", fieldName, oldValue, newValue)
+		}
+
+	}
+	return result
 }
 
 func watchPods(clientset *kubernetes.Clientset) {

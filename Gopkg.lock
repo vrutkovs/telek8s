@@ -126,12 +126,6 @@
   revision = "0fb14efe8c47ae851c0034ed7a448854d3d34cf3"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/josephburnett/jd"
-  packages = ["lib"]
-  revision = "720e887018e5431c44f6dddd1595b6fb446cf403"
-
-[[projects]]
   name = "github.com/json-iterator/go"
   packages = ["."]
   revision = "ab8a2e0c74be9d3be70b3184d9acc634935ded82"
@@ -381,6 +375,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "879fb47ab5af25e0c156d12b03ba1c05eb5d31024648d3017e949846aa3f2f41"
+  inputs-digest = "2557b799a848331b8ae9326f260ea134fb68bf377917f1086b7b96ab629ea199"
   solver-name = "gps-cdcl"
   solver-version = 1

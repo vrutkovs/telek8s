@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	"k8s.io/api/core/v1"
@@ -53,30 +54,35 @@ func jsonDiff(oldPod *v1.Pod, newPod *v1.Pod) string {
 	oldPodStatus := oldPod.Status
 	newPodStatus := newPod.Status
 
-	oldReflect := reflect.ValueOf(&oldPodStatus).Elem()
-	newReflect := reflect.ValueOf(&newPodStatus).Elem()
+	oldReflect := reflect.ValueOf(oldPodStatus)
+	newReflect := reflect.ValueOf(newPodStatus)
 
-	oldValues := make([]interface{}, oldReflect.NumField())
-	newValues := make([]interface{}, newReflect.NumField())
-
-	for i := 0; i < oldReflect.NumField(); i++ {
-		oldValues[i] = oldReflect.Field(i).Interface()
-		newValues[i] = newReflect.Field(i).Interface()
-	}
-
-	return makeDiff(0, oldReflect, oldValues, newValues)
+	return makeDiff("", 0, oldReflect, newReflect)
 }
 
-func makeDiff(indent int, oldReflect reflect.Value, oldValues []interface{}, newValues []interface{}) string {
+func makeDiff(prefix string, indent int, oldReflect reflect.Value, newReflect reflect.Value) string {
+	indentString := strings.Repeat(" ", indent)
 	result := ""
-	for i := 0; i < len(oldValues); i++ {
-		result += "\n------"
-		oldValue := oldValues[i]
-		newValue := newValues[i]
+
+	// TODO: Check for new fields?
+	// Get field values from this struct
+	for i := 0; i < oldReflect.NumField(); i++ {
+		oldValue := oldReflect.Field(i)
+		newValue := newReflect.Field(i)
 		fieldName := oldReflect.Type().Field(i).Name
-		if _, ok := oldValue.(string); ok {
-			if oldValue != newValue {
-				result += fmt.Sprintf("%s:\n  -%s\n  +%s\n", fieldName, oldValue, newValue)
+
+		// Check field type and make a diff from subelements if available
+		switch oldValue.Kind() {
+		case reflect.Struct:
+			result += makeDiff("", indent+2, oldValue, newValue)
+		case reflect.Array, reflect.Slice:
+			for j := 0; j < oldValue.Len(); j++ {
+				prefixFieldName := oldValue.Index(j).Type().Name() + "."
+				result += makeDiff(prefixFieldName, indent+2, oldValue.Index(j), newValue.Index(j))
+			}
+		default:
+			if oldValue.String() != newValue.String() {
+				result += fmt.Sprintf("%s_%s%s_:\n  -%s\n  +%s\n", indentString, prefix, fieldName, oldValue, newValue)
 			}
 		}
 	}
